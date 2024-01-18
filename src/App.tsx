@@ -1,22 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
-import { fs } from "@tauri-apps/api"; 
 import "./App.css";
-import { T } from "@tldraw/tldraw";
-import { writeTextFile, BaseDirectory } from '@tauri-apps/api/fs';
 // Write a text file to the `$APPCONFIG/app.conf` path
 
+import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/api/notification';
+
+
+async function checkPermission(){
+  let permissionGranted = await isPermissionGranted();
+  if (!permissionGranted) {
+    const permission = await requestPermission();
+    permissionGranted = permission === 'granted';
+  }
+}
+
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  checkPermission();
+
   const [task, setTask] = useState("");
   const [tasklist, setTaskList] = useState<string[]>([]);
-  const [isListVisible, setListVisible] = useState(false);
-  const [recievedTask, setRecievedTask] = useState("");
+  const [todayTaskList, settodayTaskList] = useState("");
+
   const [timer, setTimer] = useState(0);
   const [timeduration, setTimeDuration] = useState(0);
-
-  const[tempMsg, setTempmsg] = useState("hello");
+  const[taskClicked, setTaskClicked] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTask(e.currentTarget.value);
@@ -33,25 +40,16 @@ function App() {
     setTaskList(newTaskList);
   }
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-    setGreetMsg(await invoke("greet", { name }));
-  }
- 
-  async function receive_task_list() {
-    // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-    setRecievedTask(await invoke("receive_task_list", { tasklist }));
+
+  async function recieve_task_list() {
+    settodayTaskList(await invoke("recieve_task_list"));    
   }
 
-  const toggleListVisibility = () => {
-    setListVisible(!isListVisible);
-  };
 
   async function startTimer(task : string, timeduration : number){
     // await invoke("receive_task", { task, timeduration });
-    setTimer(10);
 // Write a text file to the `$APPCONFIG/app.conf` path
-    await writeTextFile({ path: '../tasks.txt', contents: 'file contents' }, { append: true} );    
+    await( invoke('receive_task', { task, timeduration }) );
     setTimer(timeduration);
   }
   
@@ -59,6 +57,10 @@ function App() {
     setTimer(timeduration);
   }
   useEffect(() => {
+    if (!taskClicked){
+      return ; 
+    }
+
     let interval: number;
     if (timer > 0) {
       // ...
@@ -66,10 +68,19 @@ function App() {
         setTimer(timer - 1);
       }, 1000);
     } else {
-      setTimer(0);
+      if (timer == 0){
+        // const audio = new Audio('/rando_pomodoro_sound.mp3');
+
+        // audio.play().catch(error => console.log(error));
+        sendNotification({body: 'Timer up', title: 'Pomodoro_App', icon: '/tauri_logo.png', sound: '/public/rando_pomodoro_sound.mp3'});
+        invoke('play_sound')
+        // new Audio('/rando_pomodoro_sound.mp3').play().catch(error => console.log(error));
+        setTaskClicked(false);
+      }
     }
     return () => window.clearInterval(interval);
-  }, [timer]);
+  }, [timer, taskClicked]);
+  
 
 
   return (
@@ -86,13 +97,12 @@ function App() {
       >
         <input
           id="time-input"
-          onChange={(e) => setTimeDuration(parseInt(e.currentTarget.value))}
-          placeholder="Enter a time..."
+          onChange={(e) => setTimeDuration(parseFloat(e.currentTarget.value) * 60)}
+          placeholder="Enter a time in minutes..."
         />
-        <button type="submit">Greet</button>
+        <button type="submit">Enter</button>
       </form>
-
-      <p>{greetMsg}</p>
+      <br></br>
       
       
 
@@ -102,25 +112,22 @@ function App() {
         placeholder="Enter a task..."
       />
       <button onClick={handleAddTask}>Add Task</button>
-      <button onClick={toggleListVisibility}>
-        {isListVisible ? "Hide List" : "Show List"}
-      </button>
+
+      <button onClick={recieve_task_list}>Get Task List</button>
+      <p>{todayTaskList}</p>
 
 
       <ul>
         {tasklist.map((task, index) => (
-          <li key={index} onDoubleClick={() => handleRemoveTask(index)} onClick={() => startTimer(task, timeduration)}>
+          <li key={index} onDoubleClick={() => handleRemoveTask(index)} onClick={() => {startTimer(task, timeduration), setTaskClicked(true)}}>
             {task}
           </li>
         ))}
       </ul>
   
 
-      <button onClick={receive_task_list}>Receive Task List</button>
-      <p>{recievedTask}</p>
+      <div style= {{fontSize: '20px'}}>{Math.floor(timer / 60)}:{timer % 60 < 10 ? '0' : ''}{timer % 60}</div>
 
-      <p style={{ position: 'fixed', bottom: 0 }}>Timer: {timer}</p>
-      <p>{tempMsg}</p>
     </div>
   );
   
