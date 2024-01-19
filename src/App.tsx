@@ -24,7 +24,10 @@ function App() {
   const [timer, setTimer] = useState(0);
   const [timeduration, setTimeDuration] = useState(0);
   const[taskClicked, setTaskClicked] = useState(false);
+  const[day_duration, setDayDuration] = useState(0);
+  const[week_duration, setWeekDuration] = useState(0);
 
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTask(e.currentTarget.value);
   };
@@ -53,6 +56,11 @@ function App() {
     setTimer(timeduration);
   }
   
+  async function get_day_duration() 
+  {
+    setDayDuration(await invoke('sum_up_day'));
+  }
+
   function timeDurationer(){
     setTimer(timeduration);
   }
@@ -73,7 +81,7 @@ function App() {
 
         // audio.play().catch(error => console.log(error));
         sendNotification({body: 'Timer up', title: 'Pomodoro_App', icon: '/tauri_logo.png', sound: '/public/rando_pomodoro_sound.mp3'});
-        invoke('play_sound')
+        // invoke('play_sound')
         // new Audio('/rando_pomodoro_sound.mp3').play().catch(error => console.log(error));
         setTaskClicked(false);
       }
@@ -86,10 +94,10 @@ function App() {
   return (
     <div className="container">
 
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
       <form
         className="row"
+        style={{width: "50%", textAlign: "center", margin: "auto"}}
         onSubmit={(e) => {
           e.preventDefault();
           timeDurationer();
@@ -100,35 +108,41 @@ function App() {
           onChange={(e) => setTimeDuration(parseFloat(e.currentTarget.value) * 60)}
           placeholder="Enter a time in minutes..."
         />
-        <button type="submit">Enter</button>
+        <button type="submit" style={{display: "block", width: "30%"}}>Enter</button>
       </form>
+
       <br></br>
       
-      
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "50%", margin: "auto" }}>
+  <input
+    value={task}
+    style={{ flex: 1, margin: "0px" }}
+    onChange={handleInputChange}
+    placeholder="Enter a task..."
+  />
+  <button style={{ width: "30%", margin: "0px" }} onClick={handleAddTask}>Add</button>
+</div>
 
-      <input
-        value={task}
-        onChange={handleInputChange}
-        placeholder="Enter a task..."
-      />
-      <button onClick={handleAddTask}>Add Task</button>
-
-      <button onClick={recieve_task_list}>Get Task List</button>
-      <p>{todayTaskList}</p>
-
-
-      <ul>
-        {tasklist.map((task, index) => (
-          <li key={index} onDoubleClick={() => handleRemoveTask(index)} onClick={() => {startTimer(task, timeduration), setTaskClicked(true)}}>
+      <ul style={{ listStyleType: "none", padding: 0 }}>
+      {tasklist.map((task, index) => (
+        <li key={index}>
+          <button 
+            style={{ display: "block", width: "auto", textAlign: "center", margin: "auto", padding: "10px" }}
+            onDoubleClick={() => handleRemoveTask(index)} 
+            onClick={() => {startTimer(task, timeduration); setTaskClicked(true);}}
+          >
             {task}
-          </li>
-        ))}
-      </ul>
+          </button>
+        </li>
+          ))}
+        </ul>
   
 
       <div style= {{fontSize: '20px'}}>{Math.floor(timer / 60)}:{timer % 60 < 10 ? '0' : ''}{timer % 60}</div>
-
+      {/* <button style={{ width: "30%", margin: "0px" }} onClick={() => get_day_duration()}>Get Day Duration</button>
+      <p>{day_duration}</p>  */}
     </div>
+    
   );
   
 
